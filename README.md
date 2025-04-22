@@ -37,7 +37,7 @@ A beautiful, responsive dashboard for visualizing and managing time tracking dat
 
 ### 3. Keyboard Tracking Utility (Python)
 
-A background utility that tracks time with global hotkey (Ctrl+Shift+R) triggers.
+A background utility that tracks time with global hotkey (Ctrl+Alt+Shift+K) triggers.
 
 - **Tech Stack**: Python, keyboard library, Tkinter
 - **Location**: `/tracker`
