@@ -5,10 +5,10 @@ A comprehensive time tracking system with global hotkey tracking, REST API backe
 # Screenshots
 ![image](https://github.com/user-attachments/assets/29184cfe-d188-42df-85a0-e9e1b88ca441)
 ![image](https://github.com/user-attachments/assets/3f103855-b556-4a39-b775-f20d9d347511)
-![3](https://github.com/user-attachments/assets/a0830801-46aa-4ec8-9c15-63b93c120f29)
-![2](https://github.com/user-attachments/assets/850d99d8-9e57-4275-934b-ee73e947b3e3)
-![1](https://github.com/user-attachments/assets/201391aa-ff36-46a3-b8c8-49a766a5eccc)
-![image](https://github.com/user-attachments/assets/9c363ae2-9000-4596-9514-53d00cd583a8)
+![Screenshot 2025-04-22 222432](https://github.com/user-attachments/assets/97174061-c399-4bd0-9782-f92444f00f5b)
+![Screenshot 2025-04-22 222504](https://github.com/user-attachments/assets/bf4a6d37-f748-45c5-9e54-9ed91550eef6)
+![Screenshot 2025-04-22 222512](https://github.com/user-attachments/assets/07f0d688-d7cf-48e0-ac47-7fc6e62859c7)
+
 
 ## Stack
  - React, React Native (Frontend)
