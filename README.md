@@ -3,8 +3,9 @@
 A comprehensive time tracking system with global hotkey tracking, REST API backend, and beautiful dashboard visualizations.
 
 # Screenshots
-![image](https://github.com/user-attachments/assets/29184cfe-d188-42df-85a0-e9e1b88ca441)
-![image](https://github.com/user-attachments/assets/3f103855-b556-4a39-b775-f20d9d347511)
+
+![Screenshot 2025-04-22 233418](https://github.com/user-attachments/assets/034b25b3-68b1-4440-a3db-8842bcff1d12)
+![Screenshot 2025-04-22 233425](https://github.com/user-attachments/assets/ff40e36e-8025-4125-ab32-8f6b2afe11f0)
 ![Screenshot 2025-04-22 222432](https://github.com/user-attachments/assets/97174061-c399-4bd0-9782-f92444f00f5b)
 ![Screenshot 2025-04-22 222504](https://github.com/user-attachments/assets/bf4a6d37-f748-45c5-9e54-9ed91550eef6)
 ![Screenshot 2025-04-22 222512](https://github.com/user-attachments/assets/07f0d688-d7cf-48e0-ac47-7fc6e62859c7)
