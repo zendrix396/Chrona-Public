@@ -1,8 +1,141 @@
+import firebase_admin
+from firebase_admin import auth
+from firebase_admin import credentials
+from firebase_admin import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime, timedelta
 import models
 import schemas
 from typing import List, Dict, Any, Optional
-from google.cloud import firestore
+import os
+import traceback
+import time
+import json
+import uuid
+import bcrypt
+
+# Initialize Firebase Admin SDK
+try:
+    if not firebase_admin._apps:
+        cred_path = os.path.join(os.path.dirname(__file__), "firebase-credentials.json")
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+except Exception as e:
+    print(f"Error initializing Firebase Admin SDK: {e}")
+
+# User CRUD operations
+async def create_user(db, user: schemas.UserCreate) -> models.User:
+    """Create a new user"""
+    try:
+        # Check if user already exists
+        users_ref = db.collection('users')
+        query = users_ref.where(filter=FieldFilter("email", "==", user.email))
+        existing_users = query.get()
+        
+        if len(existing_users) > 0:
+            raise ValueError("User with this email already exists")
+        
+        # Hash the password
+        hashed_password = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
+        
+        # Create Firebase Auth user
+        try:
+            print(f"Attempting to create Firebase Auth user with email: {user.email}")
+            firebase_user = auth.create_user(
+                email=user.email,
+                password=user.password
+            )
+            print(f"Firebase Auth user created with UID: {firebase_user.uid}")
+        except Exception as e:
+            print(f"Error creating Firebase Auth user: {e}")
+            print(traceback.format_exc())
+            raise ValueError(f"Failed to create Firebase Auth user: {str(e)}")
+        
+        # Create user in Firestore
+        user_data = {
+            "email": user.email,
+            "name": user.name or "",
+            "firebase_uid": firebase_user.uid,
+            "created_at": datetime.now()
+        }
+        
+        # Add user to Firestore
+        print(f"Adding user to Firestore: {user_data}")
+        user_ref = users_ref.document()
+        user_ref.set(user_data)
+        
+        # Return user data
+        user_data["id"] = user_ref.id
+        print(f"User created successfully with ID: {user_ref.id}")
+        return user_data
+    except Exception as e:
+        print(f"Unexpected error in create_user: {e}")
+        print(traceback.format_exc())
+        raise
+
+async def get_user_by_email(db, email: str) -> Optional[Dict[str, Any]]:
+    """Get user by email"""
+    users_ref = db.collection('users')
+    query = users_ref.where(filter=FieldFilter("email", "==", email))
+    users = query.get()
+    
+    if len(users) == 0:
+        return None
+    
+    user_doc = users[0]
+    user_data = models.User.from_dict(user_doc.to_dict(), user_doc.id)
+    return user_data
+
+async def get_user_by_id(db, user_id: str) -> Optional[Dict[str, Any]]:
+    """Get user by ID"""
+    user_ref = db.collection('users').document(user_id)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        return None
+    
+    user_data = models.User.from_dict(user_doc.to_dict(), user_doc.id)
+    return user_data
+
+async def authenticate_user(db, email: str, password: str) -> Optional[Dict[str, Any]]:
+    """Authenticate user"""
+    try:
+        # Get user from Firebase
+        user = await get_user_by_email(db, email)
+        if not user:
+            return None
+        
+        # Verify with Firebase Auth
+        firebase_user = auth.get_user_by_email(email)
+        
+        # Create custom token (normally used for client SDK sign in)
+        custom_token = auth.create_custom_token(firebase_user.uid)
+        
+        # Return user data with token
+        return {
+            "user_id": user["id"],
+            "email": user["email"],
+            "name": user["name"],
+            "firebase_uid": firebase_user.uid,
+            "custom_token": custom_token.decode('utf-8')
+        }
+    except Exception as e:
+        print(f"Authentication error: {e}")
+        print(traceback.format_exc())
+        return None
+
+async def get_user_by_firebase_uid(db, firebase_uid: str) -> Optional[Dict[str, Any]]:
+    """Get user by Firebase UID"""
+    users_ref = db.collection('users')
+    query = users_ref.where(filter=FieldFilter("firebase_uid", "==", firebase_uid))
+    users = query.get()
+    
+    if len(users) == 0:
+        return None
+    
+    user_doc = users[0]
+    user_data = models.User.from_dict(user_doc.to_dict(), user_doc.id)
+    return user_data
 
 # Task CRUD operations
 async def get_task(db: firestore.Client, id: str):
@@ -21,12 +154,19 @@ async def get_task_by_name(db: firestore.Client, name: str):
         return models.Task.from_dict(doc.to_dict(), doc.id)
     return None
 
-async def get_tasks(db: firestore.Client, skip: int = 0, limit: int = 100):
+async def get_tasks(db: firestore.Client, skip: int = 0, limit: int = 100, user_id: str = None):
+    """Get tasks, optionally filtered by user_id"""
     tasks_ref = db.collection('tasks')
-    docs = tasks_ref.limit(limit).offset(skip).stream()
+    
+    # If user_id is provided, filter tasks by user_id
+    if user_id:
+        tasks_ref = tasks_ref.where('user_id', '==', user_id)
+    
+    # Apply limits
+    query = tasks_ref.limit(limit).offset(skip)
     
     tasks = []
-    for doc in docs:
+    for doc in query.stream():
         tasks.append(models.Task.from_dict(doc.to_dict(), doc.id))
     return tasks
 
@@ -73,8 +213,15 @@ async def get_time_entry(db: firestore.Client, id: str):
         return models.TimeEntry.from_dict(doc.to_dict(), doc.id)
     return None
 
-async def get_time_entries(db: firestore.Client, skip: int = 0, limit: int = 100):
+async def get_time_entries(db: firestore.Client, skip: int = 0, limit: int = 100, user_id: str = None):
+    """Get time entries, optionally filtered by user_id"""
     entries_ref = db.collection('time_entries')
+    
+    # If user_id is provided, filter entries by user_id
+    if user_id:
+        entries_ref = entries_ref.where('user_id', '==', user_id)
+    
+    # Apply ordering and limits
     query = entries_ref.order_by('start_time', direction=firestore.Query.DESCENDING)
     query = query.limit(limit).offset(skip)
     
@@ -154,7 +301,8 @@ async def delete_time_entry(db: firestore.Client, id: str):
     return {"id": id}
 
 # Statistics functions
-async def get_daily_stats(db: firestore.Client):
+async def get_daily_stats(db: firestore.Client, user_id: str = None):
+    """Get daily stats, optionally filtered by user_id"""
     # Get today's date
     today = datetime.now().date()
     today_start = datetime.combine(today, datetime.min.time())
@@ -164,14 +312,23 @@ async def get_daily_stats(db: firestore.Client):
     entries_ref = db.collection('time_entries')
     query = entries_ref.where('start_time', '>=', today_start).where('start_time', '<=', today_end)
     
-    entries = list(query.stream())
+    # Filter by user_id if provided
+    if user_id:
+        # Need to use a different approach since Firestore doesn't allow multiple field filters
+        # with different fields in the same query
+        entries = []
+        for doc in query.stream():
+            entry = doc.to_dict()
+            if entry.get('user_id') == user_id:
+                entries.append(entry)
+    else:
+        entries = [doc.to_dict() for doc in query.stream()]
     
     # Calculate total duration
     total_duration = 0
     task_durations = {}
     
-    for entry_doc in entries:
-        entry = entry_doc.to_dict()
+    for entry in entries:
         if entry.get('duration'):
             duration = entry.get('duration')
             total_duration += duration
@@ -197,7 +354,8 @@ async def get_daily_stats(db: firestore.Client):
         "tasks": list(task_durations.values())
     }
 
-async def get_weekly_stats(db: firestore.Client):
+async def get_weekly_stats(db: firestore.Client, user_id: str = None):
+    """Get weekly stats, optionally filtered by user_id"""
     # Get the start and end of the current week
     today = datetime.now().date()
     week_start = today - timedelta(days=today.weekday())
@@ -210,15 +368,24 @@ async def get_weekly_stats(db: firestore.Client):
     entries_ref = db.collection('time_entries')
     query = entries_ref.where('start_time', '>=', week_start_dt).where('start_time', '<=', week_end_dt)
     
-    entries = list(query.stream())
+    # Filter by user_id if provided
+    if user_id:
+        # Need to use a different approach since Firestore doesn't allow multiple field filters
+        # with different fields in the same query
+        entries = []
+        for doc in query.stream():
+            entry = doc.to_dict()
+            if entry.get('user_id') == user_id:
+                entries.append(entry)
+    else:
+        entries = [doc.to_dict() for doc in query.stream()]
     
     # Calculate statistics
     total_duration = 0
     daily_breakdown = {(week_start + timedelta(days=i)).isoformat(): 0 for i in range(7)}
     task_breakdown = {}
     
-    for entry_doc in entries:
-        entry = entry_doc.to_dict()
+    for entry in entries:
         if entry.get('duration'):
             duration = entry.get('duration')
             total_duration += duration

@@ -1,53 +1,43 @@
 import os
 import json
-from google.cloud import firestore
-from google.oauth2 import service_account
+import firebase_admin
+from firebase_admin import auth, credentials, firestore
 from fastapi import Depends
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
-# Get Firebase credentials from environment variables
-CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH")
-CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS")
+# Hardcoded path to credentials
+CREDENTIALS_PATH = os.path.join(os.path.dirname(__file__), "firebase-credentials.json")
 
 # Global database instance
 _db = None
+_app = None
 
-# Initialize Firestore and return database instance
+# Initialize Firebase and return database instance
 def get_db():
     """Get Firestore database instance"""
-    global _db
+    global _db, _app
     
     if _db is not None:
         return _db
     
     try:
-        # Use credentials from environment variable or file
-        if CREDENTIALS_JSON:
-            # Use inline JSON credentials
-            cred_info = json.loads(CREDENTIALS_JSON)
-            credentials = service_account.Credentials.from_service_account_info(cred_info)
-        elif CREDENTIALS_PATH and os.path.exists(CREDENTIALS_PATH):
-            # Use credentials file
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CREDENTIALS_PATH
-            with open(CREDENTIALS_PATH, "r") as f:
-                cred_info = json.load(f)
-            credentials = service_account.Credentials.from_service_account_info(cred_info)
-        else:
-            # For development, use a mock database or raise an error
-            print("WARNING: No Firebase credentials provided. Using mock database for development.")
-            return None  # Replace with mock DB implementation if needed
-            
-        # Initialize Firestore client
-        _db = firestore.Client(
-            project=cred_info["project_id"], 
-            credentials=credentials
-        )
+        # Set environment variable for credentials
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CREDENTIALS_PATH
         
-        print(f"Successfully connected to Firebase project: {cred_info['project_id']}")
+        # Initialize Firebase Admin if not already initialized
+        if not firebase_admin._apps:
+            cred = credentials.Certificate(CREDENTIALS_PATH)
+            _app = firebase_admin.initialize_app(cred)
+            print("Firebase Admin SDK initialized successfully")
+        else:
+            _app = firebase_admin.get_app()
+            print("Using existing Firebase Admin SDK app")
+        
+        # Initialize Firestore client using the same app
+        _db = firestore.client()
+        print(f"Successfully connected to Firebase project")
         return _db
     except Exception as e:
-        print(f"Error initializing Firestore: {str(e)}")
+        print(f"Error initializing Firebase: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         raise 

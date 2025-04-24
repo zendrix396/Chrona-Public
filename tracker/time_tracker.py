@@ -15,6 +15,7 @@ from io import BytesIO
 import traceback
 import logging
 import queue
+import socket
 
 # Set up logging
 logging.basicConfig(
@@ -32,6 +33,171 @@ CONFIG_FILE = os.path.join(os.path.expanduser('~'), '.time_tracker_config.json')
 API_URL = os.environ.get('TIME_TRACKER_API_URL', 'https://chrona-backend.onrender.com')
 HOTKEY = 'ctrl+shift+alt+k'  # Changed from 'ctrl+shift+u' to 'ctrl+shift+alt+k'
 
+# Theme Colors
+DARK_BG = "#121212"  # Nearly black background
+DARK_SECONDARY = "#1E1E1E"  # Slightly lighter dark
+GREEN_ACCENT = "#00C853"  # Bright green accent
+GREEN_DARK = "#009624"  # Darker green for hover states
+TEXT_COLOR = "#FFFFFF"  # White text
+SUBTLE_TEXT = "#B0B0B0"  # Subtle gray for secondary text
+TIMER_COLOR = "#00E676"  # Bright green for timer
+
+class ChronaTheme:
+    """Theme manager for consistent styling across the app"""
+    @staticmethod
+    def setup_custom_style():
+        """Configure custom ttk styles"""
+        style = ttk.Style()
+        style.theme_use('clam')  # Start with the most configurable theme
+        
+        # Configure the colors
+        style.configure(".",
+            background=DARK_BG,
+            foreground=TEXT_COLOR,
+            fieldbackground=DARK_SECONDARY,
+            troughcolor=DARK_SECONDARY,
+            bordercolor=DARK_SECONDARY,
+            darkcolor=DARK_SECONDARY,
+            lightcolor=DARK_SECONDARY)
+        
+        # TLabel
+        style.configure("TLabel",
+            background=DARK_BG,
+            foreground=TEXT_COLOR,
+            font=("Segoe UI", 10))
+        
+        # Timer Label
+        style.configure("Timer.TLabel",
+            background=DARK_BG,
+            foreground=TIMER_COLOR,
+            font=("Segoe UI", 24, "bold"))
+        
+        # Header Label
+        style.configure("Header.TLabel",
+            background=DARK_BG,
+            foreground=TEXT_COLOR,
+            font=("Segoe UI", 16, "bold"))
+        
+        # Subtle Label
+        style.configure("Subtle.TLabel",
+            background=DARK_BG,
+            foreground=SUBTLE_TEXT,
+            font=("Segoe UI", 9))
+        
+        # TFrame
+        style.configure("TFrame",
+            background=DARK_BG)
+        
+        # TButton - Regular
+        style.configure("TButton",
+            background=GREEN_ACCENT,
+            foreground=DARK_BG,
+            font=("Segoe UI", 10, "bold"),
+            borderwidth=0,
+            focusthickness=0,
+            padding=(10, 8))
+        
+        style.map("TButton",
+            background=[('active', GREEN_DARK), ('pressed', GREEN_DARK)],
+            relief=[('pressed', 'flat'), ('!pressed', 'flat')])
+        
+        # TButton - Secondary
+        style.configure("Secondary.TButton",
+            background=DARK_SECONDARY,
+            foreground=TEXT_COLOR,
+            font=("Segoe UI", 10))
+        
+        style.map("Secondary.TButton",
+            background=[('active', "#2A2A2A"), ('pressed', "#2A2A2A")],
+            foreground=[('active', TEXT_COLOR)])
+        
+        # TButton - Accent
+        style.configure("Accent.TButton",
+            background=GREEN_ACCENT,
+            foreground=DARK_BG,
+            font=("Segoe UI", 10, "bold"))
+        
+        style.map("Accent.TButton",
+            background=[('active', GREEN_DARK), ('pressed', GREEN_DARK)])
+        
+        # TCombobox
+        style.configure("TCombobox",
+            background=DARK_SECONDARY,
+            foreground=TEXT_COLOR,
+            fieldbackground=DARK_SECONDARY,
+            selectbackground=GREEN_ACCENT,
+            selectforeground=DARK_BG,
+            arrowcolor=GREEN_ACCENT,
+            font=("Segoe UI", 10))
+        
+        style.map("TCombobox",
+            fieldbackground=[('readonly', DARK_SECONDARY)],
+            selectbackground=[('readonly', GREEN_ACCENT)],
+            selectforeground=[('readonly', DARK_BG)])
+        
+        # TScrollbar
+        style.configure("TScrollbar",
+            background=DARK_SECONDARY,
+            troughcolor=DARK_BG,
+            arrowcolor=GREEN_ACCENT)
+            
+    @staticmethod
+    def configure_widget_styles(root):
+        """Apply styling to non-ttk widgets in a window"""
+        # Configure window
+        root.configure(bg=DARK_BG)
+        
+        # Update all child widgets
+        for child in root.winfo_children():
+            widget_class = child.winfo_class()
+            
+            if widget_class == 'Frame':
+                child.configure(bg=DARK_BG)
+            elif widget_class == 'Label':
+                child.configure(bg=DARK_BG, fg=TEXT_COLOR, font=("Segoe UI", 10))
+            elif widget_class == 'Button':
+                child.configure(
+                    bg=GREEN_ACCENT, 
+                    fg=DARK_BG, 
+                    activebackground=GREEN_DARK, 
+                    activeforeground=DARK_BG,
+                    font=("Segoe UI", 10, "bold"),
+                    borderwidth=0,
+                    highlightthickness=0,
+                    padx=10, pady=5
+                )
+            elif widget_class == 'Entry':
+                child.configure(
+                    bg=DARK_SECONDARY, 
+                    fg=TEXT_COLOR, 
+                    insertbackground=GREEN_ACCENT,
+                    selectbackground=GREEN_ACCENT,
+                    selectforeground=DARK_BG,
+                    borderwidth=0,
+                    highlightthickness=1,
+                    highlightbackground=DARK_SECONDARY,
+                    highlightcolor=GREEN_ACCENT,
+                    font=("Segoe UI", 10)
+                )
+            elif widget_class == 'Text':
+                child.configure(
+                    bg=DARK_SECONDARY, 
+                    fg=TEXT_COLOR, 
+                    insertbackground=GREEN_ACCENT,
+                    selectbackground=GREEN_ACCENT,
+                    selectforeground=DARK_BG,
+                    borderwidth=0,
+                    highlightthickness=1,
+                    highlightbackground=DARK_SECONDARY,
+                    highlightcolor=GREEN_ACCENT,
+                    font=("Consolas", 9)
+                )
+                
+            # Recursively configure any children
+            if hasattr(child, 'winfo_children'):
+                for grandchild in child.winfo_children():
+                    ChronaTheme.configure_widget_styles(grandchild)
+
 class TimeTrackerApp:
     def __init__(self):
         self.root = None
@@ -44,6 +210,9 @@ class TimeTrackerApp:
         self.stop_thread = False
         self.icon = None  # System tray icon
         self.command_queue = queue.Queue()  # Queue for thread-safe command execution
+        
+        # Initialize the custom theme
+        ChronaTheme.setup_custom_style()
         
         # Load config
         self.load_config()
@@ -172,24 +341,23 @@ class TimeTrackerApp:
             return False
     
     def create_tray_icon(self):
-        """Create a simple clock icon for the system tray"""
+        """Create a clock icon for the system tray with green theme"""
         width = 64
         height = 64
-        color1 = (66, 133, 244)  # Blue color
-        color2 = (234, 67, 53)   # Red color
+        green_color = (0, 200, 83)  # GREEN_ACCENT as RGB
         
         image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
         dc = ImageDraw.Draw(image)
         
         # Draw a clock face
-        dc.ellipse((4, 4, width-4, height-4), fill=(255, 255, 255, 220), outline=color1, width=2)
+        dc.ellipse((4, 4, width-4, height-4), fill=(30, 30, 30, 220), outline=green_color, width=2)
         
         # Draw clock hands
         center_x, center_y = width // 2, height // 2
         # Hour hand
-        dc.line((center_x, center_y, center_x - 15, center_y + 10), fill=color1, width=3)
+        dc.line((center_x, center_y, center_x - 15, center_y + 10), fill=green_color, width=3)
         # Minute hand
-        dc.line((center_x, center_y, center_x + 5, center_y - 20), fill=color2, width=3)
+        dc.line((center_x, center_y, center_x + 5, center_y - 20), fill=green_color, width=3)
         
         return image
     
@@ -507,8 +675,16 @@ class TimeTrackerApp:
         
         # Create a new independent Toplevel window
         self.task_window = tk.Toplevel()
-        self.task_window.title("Time Tracker")
-        self.task_window.geometry("400x400")  # Made slightly taller for the new button
+        self.task_window.title("Chrona Time Tracker")
+        self.task_window.geometry("400x450")
+        
+        # Configure the window with dark theme
+        self.task_window.configure(bg=DARK_BG)
+        
+        # Set window icon
+        icon_img = self.create_tray_icon()
+        icon_tk = ImageTk.PhotoImage(icon_img)
+        self.task_window.iconphoto(False, icon_tk)
         
         # Make sure it appears on top of other windows
         self.task_window.attributes('-topmost', True)
@@ -522,63 +698,71 @@ class TimeTrackerApp:
         # Center the window
         self.center_window(self.task_window)
         
-        # Create frame
-        frame = ttk.Frame(self.task_window, padding="20")
+        # Create frame with padding
+        frame = ttk.Frame(self.task_window, padding="20", style="TFrame")
         frame.pack(fill=tk.BOTH, expand=True)
         
-        # Add app icon
-        icon_img = self.create_tray_icon()
-        # Convert PIL image to tkinter PhotoImage
-        icon_tk = ImageTk.PhotoImage(icon_img)
-        self.task_window.iconphoto(False, icon_tk)
-        
         # Header with icon
-        header_frame = ttk.Frame(frame)
+        header_frame = ttk.Frame(frame, style="TFrame")
         header_frame.pack(fill=tk.X, pady=(0, 20))
         
         # Display smaller icon in the header
         small_icon = icon_img.resize((32, 32))
         small_icon_tk = ImageTk.PhotoImage(small_icon)
-        icon_label = ttk.Label(header_frame, image=small_icon_tk)
+        icon_label = ttk.Label(header_frame, image=small_icon_tk, style="TLabel")
         icon_label.image = small_icon_tk  # Keep a reference
         icon_label.pack(side=tk.LEFT, padx=(0, 10))
         
-        ttk.Label(header_frame, text="Track Time", font=("Arial", 16, "bold")).pack(side=tk.LEFT)
+        # Header text
+        ttk.Label(header_frame, text="CHRONA", style="Header.TLabel").pack(side=tk.LEFT)
+        
+        # Descriptive text
+        ttk.Label(frame, text="Track your time efficiently", style="TLabel").pack(anchor="w", pady=(0, 20))
         
         # Task selection
-        ttk.Label(frame, text="Select Task:").pack(anchor="w")
+        ttk.Label(frame, text="SELECT TASK", style="TLabel").pack(anchor="w")
         
         self.task_var = tk.StringVar()
-        self.task_dropdown = ttk.Combobox(frame, textvariable=self.task_var, width=40)
+        self.task_dropdown = ttk.Combobox(frame, textvariable=self.task_var, width=40, style="TCombobox")
         self.task_dropdown['values'] = [task['name'] for task in self.tasks]
         if self.task_dropdown['values']:
             self.task_dropdown.current(0)  # Select first task by default
-        self.task_dropdown.pack(pady=(5, 15), fill="x")
-        
-        # API URL display and testing
-        api_frame = ttk.Frame(frame)
-        api_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        ttk.Label(api_frame, text=f"API: {self.api_url}", font=("Arial", 9)).pack(side=tk.LEFT)
-        ttk.Button(api_frame, text="Test", command=self.test_and_show_api_status, width=8).pack(side=tk.RIGHT)
-        ttk.Button(api_frame, text="Refresh", command=self.refresh_tasks, width=8).pack(side=tk.RIGHT, padx=(0, 5))
-        
-        # Add detailed API test button
-        ttk.Button(api_frame, text="Debug API", command=self.run_detailed_api_test, width=10).pack(side=tk.RIGHT, padx=(0, 5))
+        self.task_dropdown.pack(pady=(5, 20), fill="x")
         
         # Timer display
-        self.timer_label = ttk.Label(frame, text="00:00:00", font=("Arial", 24))
-        self.timer_label.pack(pady=(5, 20))
+        timer_frame = ttk.Frame(frame, style="TFrame")
+        timer_frame.pack(fill=tk.X, pady=(0, 20))
         
-        # Start button
-        start_button = ttk.Button(frame, text="Start Tracking", 
-                               command=self.handle_start_button)
-        start_button.pack(pady=(0, 10), fill="x")
+        ttk.Label(timer_frame, text="TIMER", style="TLabel").pack(anchor="w")
+        self.timer_label = ttk.Label(timer_frame, text="00:00:00", style="Timer.TLabel")
+        self.timer_label.pack(pady=(5, 0))
         
-        # Cancel button
-        cancel_button = ttk.Button(frame, text="Cancel", 
-                               command=self.task_window.withdraw)
-        cancel_button.pack(fill="x")
+        # API connection info
+        api_frame = ttk.Frame(frame, style="TFrame")
+        api_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(api_frame, text="SERVER", style="TLabel").pack(anchor="w")
+        ttk.Label(api_frame, text=f"{self.api_url}", style="Subtle.TLabel").pack(anchor="w", pady=(2, 5))
+        
+        # Buttons row for API actions
+        api_buttons = ttk.Frame(api_frame, style="TFrame")
+        api_buttons.pack(fill=tk.X)
+        
+        ttk.Button(api_buttons, text="Test Connection", command=self.test_and_show_api_status, 
+                  style="Secondary.TButton").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(api_buttons, text="Refresh Tasks", command=self.refresh_tasks, 
+                  style="Secondary.TButton").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(api_buttons, text="Debug API", command=self.run_detailed_api_test, 
+                  style="Secondary.TButton").pack(side=tk.LEFT)
+        
+        # Actions section
+        ttk.Label(frame, text="ACTIONS", style="TLabel").pack(anchor="w", pady=(0, 5))
+        
+        # Buttons
+        ttk.Button(frame, text="START TRACKING", command=self.handle_start_button, 
+                  style="Accent.TButton").pack(fill="x", pady=(5, 10), ipady=5)
+        ttk.Button(frame, text="CANCEL", command=self.task_window.withdraw, 
+                  style="Secondary.TButton").pack(fill="x")
         
         # Force update and focus on the dropdown
         self.task_window.update_idletasks()
@@ -680,44 +864,80 @@ class TimeTrackerApp:
         # Create mini timer window
         self.mini_timer_window = tk.Toplevel(self.root)
         self.mini_timer_window.title("")
-        self.mini_timer_window.geometry("120x35")
+        self.mini_timer_window.geometry("180x80")
         self.mini_timer_window.overrideredirect(True)  # Remove window decorations
         self.mini_timer_window.attributes('-topmost', True)  # Keep on top
-        self.mini_timer_window.configure(bg='black')
+        self.mini_timer_window.configure(bg=DARK_BG)
+        
+        # Add a subtle border
+        border_frame = tk.Frame(self.mini_timer_window, bg=GREEN_ACCENT)
+        border_frame.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
+        
+        # Inside frame
+        inner_frame = tk.Frame(border_frame, bg=DARK_BG)
+        inner_frame.pack(fill=tk.BOTH, expand=True)
         
         # Position at the top-right corner initially
         screen_width = self.mini_timer_window.winfo_screenwidth()
-        self.mini_timer_window.geometry(f"+{screen_width-130}+10")
+        self.mini_timer_window.geometry(f"+{screen_width-200}+10")
         
-        # Create frame
-        frame = tk.Frame(self.mini_timer_window, bg='black')
-        frame.pack(fill=tk.BOTH, expand=True)
+        # Task name label with ellipsis if too long
+        task_name = self.current_task_name
+        if len(task_name) > 20:
+            task_name = task_name[:17] + "..."
+            
+        task_label = tk.Label(
+            inner_frame,
+            text=task_name,
+            font=("Segoe UI", 10),
+            fg=TEXT_COLOR,
+            bg=DARK_BG,
+            anchor="w"
+        )
+        task_label.pack(fill=tk.X, padx=10, pady=(8, 0))
         
         # Timer label
         self.mini_timer_label = tk.Label(
-            frame, 
+            inner_frame, 
             text="00:00:00", 
-            font=("Consolas", 14, "bold"), 
-            fg="#00FF00", 
-            bg="black"
+            font=("Segoe UI", 18, "bold"), 
+            fg=TIMER_COLOR, 
+            bg=DARK_BG
         )
-        self.mini_timer_label.pack(fill=tk.BOTH, expand=True)
+        self.mini_timer_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        
+        # Add a small stop button
+        stop_button = tk.Label(
+            inner_frame,
+            text="✕",
+            font=("Segoe UI", 8),
+            fg=SUBTLE_TEXT,
+            bg=DARK_BG,
+            cursor="hand2"
+        )
+        stop_button.place(x=160, y=5)
+        stop_button.bind("<Button-1>", lambda e: self.stop_tracking())
         
         # Make window draggable
-        self.mini_timer_window.bind("<ButtonPress-1>", self.start_drag)
-        self.mini_timer_window.bind("<ButtonRelease-1>", self.stop_drag)
-        self.mini_timer_window.bind("<B1-Motion>", self.on_drag)
+        for widget in [self.mini_timer_label, task_label, inner_frame]:
+            widget.bind("<ButtonPress-1>", self.start_drag)
+            widget.bind("<ButtonRelease-1>", self.stop_drag)
+            widget.bind("<B1-Motion>", self.on_drag)
         
         # Add keyboard shortcuts
         self.mini_timer_window.bind("<KeyPress>", self.handle_key_press)
         
+        # Add a helpful tooltip on hover
+        task_label.bind("<Enter>", lambda e: self.show_timer_tooltip("Drag to move, press 'O' to adjust opacity"))
+        task_label.bind("<Leave>", lambda e: self.hide_timer_tooltip())
+        
         # Set opacity level
-        self.opacity = 0.8
+        self.opacity = 0.9
         self.update_opacity()
         
         # Start updating the timer
         self.update_mini_timer()
-    
+        
     def update_mini_timer(self):
         """Update the mini timer display"""
         if self.tracking and hasattr(self, 'mini_timer_label') and self.mini_timer_label.winfo_exists():
@@ -775,6 +995,35 @@ class TimeTrackerApp:
             except Exception as e:
                 logger.error(f"Error setting opacity: {e}")
     
+    def show_timer_tooltip(self, text):
+        """Show a tooltip for the mini timer"""
+        if hasattr(self, 'tooltip') and self.tooltip:
+            self.tooltip.destroy()
+            
+        # Create tooltip window
+        self.tooltip = tk.Toplevel(self.mini_timer_window)
+        self.tooltip.overrideredirect(True)
+        self.tooltip.configure(bg=DARK_SECONDARY)
+        
+        # Add tooltip text
+        tip_label = tk.Label(self.tooltip, text=text, bg=DARK_SECONDARY, fg=TEXT_COLOR,
+                           font=("Segoe UI", 9), padx=8, pady=2)
+        tip_label.pack()
+        
+        # Position tooltip below the timer
+        x = self.mini_timer_window.winfo_x() + 10
+        y = self.mini_timer_window.winfo_y() + self.mini_timer_window.winfo_height() + 2
+        self.tooltip.geometry(f"+{x}+{y}")
+        
+        # Auto-hide after 2 seconds
+        self.mini_timer_window.after(2000, self.hide_timer_tooltip)
+        
+    def hide_timer_tooltip(self):
+        """Hide the tooltip"""
+        if hasattr(self, 'tooltip') and self.tooltip:
+            self.tooltip.destroy()
+            self.tooltip = None
+            
     def debug_api_connection(self):
         """Debug API connection issues"""
         logger.debug("Starting API connection debugging")
@@ -823,7 +1072,6 @@ class TimeTrackerApp:
             
             # Test if the server is reachable
             try:
-                import socket
                 api_host = self.api_url.replace("http://", "").replace("https://", "").split("/")[0]
                 if ":" in api_host:
                     host, port = api_host.split(":")
@@ -844,7 +1092,7 @@ class TimeTrackerApp:
         except Exception as e:
             logger.debug(f"Debug API connection error: {e}")
             logger.debug(traceback.format_exc())
-    
+
     def stop_tracking(self):
         """Stop tracking time"""
         if not self.tracking or not self.entry_id:
@@ -889,23 +1137,43 @@ class TimeTrackerApp:
         # Create a new window
         self.result_window = tk.Toplevel(self.root)
         self.result_window.title("Time Tracked")
-        self.result_window.geometry("300x150")
+        self.result_window.geometry("350x250")
+        self.result_window.configure(bg=DARK_BG)
         self.result_window.protocol("WM_DELETE_WINDOW", lambda: self.safe_destroy(self.result_window))
         
         # Set attributes
         self.result_window.attributes('-topmost', True)
         self.center_window(self.result_window)
         
-        # Create frame
-        frame = ttk.Frame(self.result_window, padding="20")
+        # Create main frame
+        frame = ttk.Frame(self.result_window, padding="20", style="TFrame")
         frame.pack(fill=tk.BOTH, expand=True)
         
-        # Add labels and button
-        ttk.Label(frame, text="Time tracked for:", font=("Arial", 12)).pack(pady=(0, 5))
-        ttk.Label(frame, text=task_name, font=("Arial", 14, "bold")).pack(pady=(0, 10))
-        ttk.Label(frame, text=duration, font=("Arial", 16)).pack(pady=(0, 15))
+        # Add a completion icon/checkmark
+        check_frame = ttk.Frame(frame, style="TFrame")
+        check_frame.pack(pady=(0, 20))
         
-        ttk.Button(frame, text="Close", command=lambda: self.safe_destroy(self.result_window)).pack()
+        check_label = ttk.Label(check_frame, text="✓", font=("Segoe UI", 36), foreground=GREEN_ACCENT, background=DARK_BG)
+        check_label.pack()
+        
+        # Add labels with task info
+        ttk.Label(frame, text="TIME TRACKED SUCCESSFULLY", style="Header.TLabel").pack(pady=(0, 10))
+        
+        task_frame = ttk.Frame(frame, style="TFrame")
+        task_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        ttk.Label(task_frame, text="Task:", style="TLabel").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(task_frame, text=task_name, style="TLabel").pack(side=tk.LEFT)
+        
+        duration_frame = ttk.Frame(frame, style="TFrame")
+        duration_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(duration_frame, text="Duration:", style="TLabel").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(duration_frame, text=duration, style="Timer.TLabel").pack(side=tk.LEFT)
+        
+        # Add close button
+        ttk.Button(frame, text="CLOSE", command=lambda: self.safe_destroy(self.result_window), 
+                  style="Accent.TButton").pack(fill="x", pady=(10, 0))
         
         # Auto-close after 5 seconds
         self.result_window.after(5000, lambda: self.safe_destroy(self.result_window))
@@ -946,65 +1214,88 @@ class TimeTrackerApp:
         results = {}
         test_window = tk.Toplevel(self.root)
         test_window.title("API Endpoint Test Results")
-        test_window.geometry("500x400")
+        test_window.geometry("550x450")
+        test_window.configure(bg=DARK_BG)
         test_window.attributes('-topmost', True)
         self.center_window(test_window)
         
-        # Create a text widget to display results
-        result_text = tk.Text(test_window, wrap=tk.WORD, font=("Courier", 9))
-        result_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Main container
+        main_frame = ttk.Frame(test_window, padding="15", style="TFrame")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Header
+        ttk.Label(main_frame, text="API CONNECTION TEST", style="Header.TLabel").pack(pady=(0, 15))
+        ttk.Label(main_frame, text=f"Testing connection to {self.api_url}", style="Subtle.TLabel").pack(pady=(0, 15))
+        
+        # Create a text widget with scrollbar for results
+        results_frame = ttk.Frame(main_frame, style="TFrame")
+        results_frame.pack(fill=tk.BOTH, expand=True)
+        
+        result_text = tk.Text(results_frame, wrap=tk.WORD, bg=DARK_SECONDARY, fg=TEXT_COLOR,
+                            font=("Consolas", 9), borderwidth=0, highlightthickness=1,
+                            highlightbackground=DARK_SECONDARY, highlightcolor=GREEN_ACCENT)
+        result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Add a scroll bar
-        scrollbar = ttk.Scrollbar(result_text, command=result_text.yview)
+        scrollbar = ttk.Scrollbar(results_frame, command=result_text.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         result_text.config(yscrollcommand=scrollbar.set)
         
         # Function to append text
-        def append_text(text):
+        def append_text(text, tag=None):
             result_text.config(state=tk.NORMAL)
-            result_text.insert(tk.END, text + "\n")
+            if tag:
+                result_text.insert(tk.END, text + "\n", tag)
+            else:
+                result_text.insert(tk.END, text + "\n")
             result_text.see(tk.END)
             result_text.config(state=tk.DISABLED)
             test_window.update()
         
-        append_text(f"API URL: {self.api_url}")
-        append_text("Starting API tests...\n")
+        # Configure tags for colored text
+        result_text.tag_configure("success", foreground="#00E676")  # Green for success
+        result_text.tag_configure("error", foreground="#FF5252")    # Red for errors
+        result_text.tag_configure("info", foreground="#82B1FF")     # Blue for info
+        result_text.tag_configure("header", foreground="#E0E0E0", font=("Consolas", 9, "bold"))  # Bold for headers
+        
+        append_text(f"API URL: {self.api_url}", "header")
+        append_text("Starting API tests...\n", "info")
         
         # Test root endpoint
         try:
-            append_text("Testing root endpoint...")
+            append_text("Testing root endpoint...", "header")
             response = requests.get(f"{self.api_url}/", timeout=5)
             results['root'] = f"Status: {response.status_code}, Response: {response.text[:100]}"
-            append_text(f"✓ Root endpoint: {response.status_code}\n")
+            append_text(f"✓ Root endpoint: {response.status_code}\n", "success")
         except Exception as e:
             results['root'] = f"Error: {str(e)}"
-            append_text(f"❌ Root endpoint error: {str(e)}\n")
-        
+            append_text(f"❌ Root endpoint error: {str(e)}\n", "error")
+            
         # Test tasks endpoint
         try:
-            append_text("Testing tasks endpoint...")
+            append_text("Testing tasks endpoint...", "header")
             response = requests.get(f"{self.api_url}/tasks/", timeout=5)
             results['tasks'] = f"Status: {response.status_code}, Tasks: {len(response.json())}"
-            append_text(f"✓ Tasks endpoint: {response.status_code}, Found {len(response.json())} tasks\n")
+            append_text(f"✓ Tasks endpoint: {response.status_code}, Found {len(response.json())} tasks\n", "success")
         except Exception as e:
             results['tasks'] = f"Error: {str(e)}"
-            append_text(f"❌ Tasks endpoint error: {str(e)}\n")
+            append_text(f"❌ Tasks endpoint error: {str(e)}\n", "error")
         
         # Test time entries GET endpoint
         try:
-            append_text("Testing time-entries GET endpoint...")
+            append_text("Testing time-entries GET endpoint...", "header")
             response = requests.get(f"{self.api_url}/time-entries/", timeout=5)
             results['time_entries_get'] = f"Status: {response.status_code}, Entries: {len(response.json()) if response.status_code == 200 else 'N/A'}"
-            append_text(f"✓ Time entries GET: {response.status_code}\n")
+            append_text(f"✓ Time entries GET: {response.status_code}\n", "success")
         except Exception as e:
             results['time_entries_get'] = f"Error: {str(e)}"
-            append_text(f"❌ Time entries GET error: {str(e)}\n")
+            append_text(f"❌ Time entries GET error: {str(e)}\n", "error")
         
         # Test time entries POST endpoint with a test task
         if self.tasks:
             try:
                 test_task_id = self.tasks[0]['id']
-                append_text(f"Testing time-entries POST endpoint with task ID {test_task_id}...")
+                append_text(f"Testing time-entries POST endpoint with task ID {test_task_id}...", "header")
                 
                 # Format the datetime as ISO 8601 string without timezone information
                 start_time = datetime.now().isoformat(timespec='seconds')
@@ -1032,12 +1323,12 @@ class TimeTrackerApp:
                 results['time_entries_post'] = f"Status: {response.status_code}, Response: {response.text[:100]}"
                 
                 if response.status_code in [200, 201]:
-                    append_text(f"✓ Time entries POST: {response.status_code}, Entry created successfully\n")
+                    append_text(f"✓ Time entries POST: {response.status_code}, Entry created successfully\n", "success")
                     entry_id = response.json().get('id')
                     
                     # If successful, test the PUT endpoint too to complete the test entry
                     if entry_id:
-                        append_text(f"Testing time-entries PUT endpoint with entry ID {entry_id}...")
+                        append_text(f"Testing time-entries PUT endpoint with entry ID {entry_id}...", "header")
                         
                         # Format end_time as ISO 8601 string without timezone information
                         end_time = datetime.now().isoformat(timespec='seconds')
@@ -1058,16 +1349,16 @@ class TimeTrackerApp:
                         results['time_entries_put'] = f"Status: {update_response.status_code}"
                         
                         if update_response.status_code == 200:
-                            append_text(f"✓ Time entries PUT: {update_response.status_code}, Entry updated successfully\n")
+                            append_text(f"✓ Time entries PUT: {update_response.status_code}, Entry updated successfully\n", "success")
                         else:
-                            append_text(f"❌ Time entries PUT failed: {update_response.status_code}\n{update_response.text[:200]}\n")
+                            append_text(f"❌ Time entries PUT failed: {update_response.status_code}\n{update_response.text[:200]}\n", "error")
                 else:
-                    append_text(f"❌ Time entries POST failed: {response.status_code}\n{response.text[:200]}\n")
+                    append_text(f"❌ Time entries POST failed: {response.status_code}\n{response.text[:200]}\n", "error")
             except Exception as e:
                 results['time_entries_post'] = f"Error: {str(e)}"
-                append_text(f"❌ Time entries POST error: {str(e)}\n")
+                append_text(f"❌ Time entries POST error: {str(e)}\n", "error")
         else:
-            append_text("⚠️ Cannot test time entries POST - no tasks available\n")
+            append_text("⚠️ Cannot test time entries POST - no tasks available\n", "info")
         
         # Summary
         append_text("\nTest Summary:")
@@ -1077,7 +1368,8 @@ class TimeTrackerApp:
         append_text("\nAPI test complete. Check time_tracker.log for more details.")
         
         # Add a close button
-        ttk.Button(test_window, text="Close", command=test_window.destroy).pack(pady=10)
+        ttk.Button(main_frame, text="CLOSE", command=test_window.destroy, 
+                  style="Accent.TButton").pack(pady=15)
         
         # Log all results
         logger.debug(f"API Test Results: {json.dumps(results, indent=2)}")

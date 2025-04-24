@@ -1,12 +1,38 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import validator
+
+# User authentication schemas
+class UserBase(BaseModel):
+    email: EmailStr
+    name: Optional[str] = None
+
+class UserCreate(UserBase):
+    password: str
+    
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+    
+class TokenData(BaseModel):
+    access_token: str
+    token_type: str
+    user_id: str
+    expires_at: int
+
+class User(UserBase):
+    id: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
 # Task schemas
 class TaskBase(BaseModel):
     name: str
     description: Optional[str] = None
+    user_id: Optional[str] = None  # Added user_id to associate tasks with users
 
 class TaskCreate(TaskBase):
     pass
@@ -25,6 +51,7 @@ class TimeEntryBase(BaseModel):
     end_time: Optional[datetime] = None
     duration: Optional[float] = None
     notes: Optional[str] = None
+    user_id: Optional[str] = None  # Added user_id to associate time entries with users
     
     class Config:
         from_attributes = True

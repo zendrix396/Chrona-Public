@@ -1,25 +1,89 @@
-# Virtual environments
-backend/venv/
-venv/
-*/venv/
-*.env
-
-# Python cache files
-backend/__pycache__/
-*/__pycache__/
+# Python
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-.pytest_cache/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Node.js
-frontend/node_modules/
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# NodeJS
 node_modules/
-*/node_modules/
 npm-debug.log
 yarn-debug.log
 yarn-error.log
+.pnp/
+.pnp.js
+.npm
+
+# Build files
+/build
+/dist
+/out
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Firebase related
+**/firebase-credentials.json
+**/firebase-admin*.json
+*firebaserc
+*.firebase/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Testing
+coverage/
+.nyc_output/
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 
 # Buildozer build files
 tracker/.buildozer/
@@ -50,6 +114,9 @@ backend/*.log
 *.sqlite3
 
 # # Firebase credentials
-  firebase-credentials.json
- *-firebase-adminsdk-*.json
-  firebase-config.js 
+# firebase-credentials.json
+# *-firebase-adminsdk-*.json
+# firebase-config.js 
+
+# Frontend Android
+frontend-android/ 
