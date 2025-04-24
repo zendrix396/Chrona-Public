@@ -1,6 +1,45 @@
-# Chrona - Time Tracking Application
+# Chrona Time Tracking Utility
 
-Chrona is a comprehensive time tracking solution with a web frontend and desktop client, designed to help individuals and teams track time spent on tasks efficiently.
+Streamlined time tracking solution for professionals and teams with intuitive task management and insightful performance analytics.
+
+![Screenshot 2025-04-22 233418](https://github.com/user-attachments/assets/cf6b65dc-4841-4968-a835-f06a2c0fb244)
+![Screenshot 2025-04-22 222512](https://github.com/user-attachments/assets/5aef3078-04e6-4086-a19f-501eb8583ede)
+![Screenshot 2025-04-22 222432](https://github.com/user-attachments/assets/d6b226d7-df01-4bb4-8e9d-ddfbe46074c2)
+![Screenshot 2025-04-22 222504](https://github.com/user-attachments/assets/45572ffc-1d81-4d53-851a-967f3ad224e9)
+![WhatsApp Image 2025-04-20 at 15 41 06_19c33fd3](https://github.com/user-attachments/assets/2612bb06-4181-4222-87ed-7e56b107ae49)
+![WhatsApp Image 2025-04-20 at 15 41 06_d2e0ee7e](https://github.com/user-attachments/assets/b880ccf0-a720-482b-94da-eb42186826a5)
+![WhatsApp Image 2025-04-20 at 15 41 05_96b40f6d](https://github.com/user-attachments/assets/260edcf9-2260-441b-9980-c26fe81377a3)
+
+
+## The problem it solves
+
+Chrona addresses the challenge of accurate time tracking and productivity management for freelancers, remote workers, and teams. Users can:
+- Track time spent on specific tasks with a single click
+- Organize work by projects and categories
+- Generate detailed reports on productivity and billable hours
+- Access their time data across web and desktop platforms
+- Maintain accountability with historical time entry records
+
+The solution eliminates manual time logging errors and provides visibility into how time is actually spent, helping professionals optimize their workflows and accurately bill clients.
+
+## Challenges I ran into
+
+Developing Chrona presented several technical hurdles:
+1. **Cross-platform compatibility**: Creating a consistent experience across web and desktop required careful architecture design. We used React for the frontend and Flask for the backend to maintain code reusability.
+2. **Real-time synchronization**: Ensuring time entries synchronized seamlessly between devices necessitated implementing websockets and a robust state management system.
+3. **Authentication security**: We implemented JWT tokens with proper refresh mechanisms to maintain security while providing a seamless user experience.
+4. **Performance optimization**: The time tracking component needed to run efficiently without consuming excessive resources, particularly in background mode.
+5. **Firestore data modeling**: Designing an efficient database schema in Firestore required rethinking traditional relational models to leverage NoSQL capabilities properly.
+
+## Technologies I used
+
+Python, Flask, React, TypeScript, Firebase, Firestore, Material-UI, JWT, React Query, FastAPI, Docker, Render
+
+## Links
+
+- [API Documentation](https://chrona-backend.onrender.com/docs)
+- [Live Demo](https://chrona-app.onrender.com)
+- [GitHub Repository](https://github.com/zendrix396/chrona-public)
 
 ## Features
 
@@ -97,7 +136,3 @@ This is a public repository of Chrona. The code has been sanitized to remove any
 1. Generate your own security keys
 2. Set up your own Firebase project
 3. Never commit any sensitive credentials to your repository
-
-## License
-
-MIT License 
