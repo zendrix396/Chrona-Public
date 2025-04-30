@@ -22,15 +22,6 @@ Chrona addresses the challenge of accurate time tracking and productivity manage
 
 The solution eliminates manual time logging errors and provides visibility into how time is actually spent, helping professionals optimize their workflows and accurately bill clients.
 
-## Challenges I ran into
-
-Developing Chrona presented several technical hurdles:
-1. **Cross-platform compatibility**: Creating a consistent experience across web and desktop required careful architecture design. We used React for the frontend and Flask for the backend to maintain code reusability.
-2. **Real-time synchronization**: Ensuring time entries synchronized seamlessly between devices necessitated implementing websockets and a robust state management system.
-3. **Authentication security**: We implemented JWT tokens with proper refresh mechanisms to maintain security while providing a seamless user experience.
-4. **Performance optimization**: The time tracking component needed to run efficiently without consuming excessive resources, particularly in background mode.
-5. **Firestore data modeling**: Designing an efficient database schema in Firestore required rethinking traditional relational models to leverage NoSQL capabilities properly.
-
 ## Technologies I used
 
 Python, Flask, React, TypeScript, Firebase, Firestore, Material-UI, JWT, React Query, FastAPI, Docker, Render
